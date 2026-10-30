@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Inside One Roll Studios — The studio</title>
+<meta name="description" content="Step inside the One Roll Studios room. Explore the studio and talk to Roll, an agent that can show you around and help shape a project." />
+<style>
+  @font-face{font-family:"Inter Display";src:url("fonts/InterDisplay-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
+  @font-face{font-family:"Inter Display";src:url("fonts/InterDisplay-Medium.ttf") format("truetype");font-weight:500;font-display:swap}
+  @font-face{font-family:"Inter Display";src:url("fonts/InterDisplay-SemiBold.ttf") format("truetype");font-weight:600;font-display:swap}
+  @font-face{font-family:"Inter Display";src:url("fonts/InterDisplay-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --ink:#3C2E20;--gold:#E7B23A;--goldDk:#C2871F;--cream:#F2E9D5;--paper:#FBF3E2;
+    --wall:#3F2F22;--espresso:#2A2015;--shadow:rgba(18,11,4,.5);
+    --font:"Inter Display",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--wall);color:var(--cream);font-family:var(--font);overflow:hidden;
+    -webkit-font-smoothing:antialiased;user-select:none;overscroll-behavior:none;touch-action:none}
+  canvas#c{display:block;position:fixed;inset:0;z-index:0}
+  .chrome{position:fixed;z-index:5}
+
+  /* top bar */
+  #top{top:0;left:0;right:0;z-index:9;display:flex;align-items:center;justify-content:space-between;padding:16px clamp(14px,3vw,30px);gap:12px}
+  .back,.pill{display:inline-flex;align-items:center;gap:9px;pointer-events:auto;cursor:pointer;background:rgba(32,24,15,.78);
+    border:1px solid rgba(246,221,150,.25);border-radius:999px;padding:9px 15px;backdrop-filter:blur(8px);color:var(--cream);
+    font:inherit;font-size:13px;font-weight:500;text-decoration:none;transition:.15s}
+  .back:hover,.pill:hover{background:rgba(32,24,15,.95);border-color:rgba(246,221,150,.5)}
+  .back svg{width:16px;height:16px}
+  #where{text-align:right;pointer-events:none}
+  #where b{font-family:var(--serif);font-size:14px;font-weight:700;display:block;line-height:1}
+  #where span{font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:rgba(242,233,213,.55)}
+  .pill.talk{background:var(--gold);border-color:#f4ce6b;color:#3a2a0e;font-weight:700}
+  .pill.talk:hover{background:#f2c966}
+
+  /* hint */
+  #hint{left:50%;transform:translateX(-50%);bottom:16px;display:flex;gap:12px;align-items:center;background:rgba(28,20,12,.6);
+    padding:8px 14px;border-radius:999px;backdrop-filter:blur(6px);border:1px solid rgba(246,221,150,.15);
+    color:rgba(242,233,213,.85);font-size:11.5px;letter-spacing:.02em;pointer-events:none;transition:opacity .5s}
+  #hint kbd{display:inline-block;min-width:16px;text-align:center;padding:2px 6px;border-radius:5px;font:inherit;font-size:10.5px;font-weight:700;color:#3a2a10;background:var(--cream);margin:0 1px}
+  #hint .dot{width:3px;height:3px;border-radius:50%;background:rgba(246,221,150,.4)}
+  #hint.dim{opacity:0}
+
+  /* proximity prompt */
+  #prompt{position:fixed;z-index:6;pointer-events:none;transform:translate(-50%,-100%);opacity:0;transition:opacity .18s;text-align:center}
+  #prompt .p{display:inline-flex;align-items:center;gap:7px;background:rgba(28,20,12,.92);border:1px solid rgba(246,221,150,.25);
+    border-radius:999px;padding:7px 13px;font-size:12px;font-weight:600;backdrop-filter:blur(6px);white-space:nowrap;color:var(--cream)}
+  #prompt .p b{color:var(--gold)}
+  #prompt.on{opacity:1}
+
+  /* zone card */
+  .modal{position:fixed;inset:0;z-index:12;display:grid;place-items:center;pointer-events:none}
+  .modal .scrim{position:absolute;inset:0;background:rgba(20,13,5,.6);opacity:0;transition:.3s}
+  .modal .card{position:relative;width:min(440px,92vw);background:var(--paper);border:1px solid rgba(120,90,50,.25);border-radius:22px;
+    padding:30px;box-shadow:0 50px 100px rgba(0,0,0,.5);transform:translateY(20px) scale(.94);opacity:0;transition:.38s cubic-bezier(.3,1.4,.5,1)}
+  .modal.open{pointer-events:auto}.modal.open .scrim{opacity:1}.modal.open .card{transform:none;opacity:1}
+  .card .x{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(120,90,50,.3);background:#f3e9d2;color:#8a7658;cursor:pointer;font-size:14px;font-weight:700}
+  .card .x:hover{background:#ece0c4;color:#5b4a30}
+  .card .badge{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#a08a63;margin-bottom:10px}
+  .card .badge .d{width:11px;height:11px;border-radius:4px}
+  .card h2{margin:0 0 6px;font-family:var(--serif);font-size:clamp(28px,4.4vw,38px);font-weight:700;letter-spacing:-.01em;color:#2f2416;line-height:1}
+  .card .tag{margin:0 0 16px;font-size:15px;font-weight:700}
+  .card p.desc{margin:0;color:#6a5a40;font-size:14.5px;line-height:1.6}
+  .card .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+  .card .acts button{font:inherit;font-size:13.5px;font-weight:800;padding:13px 18px;border-radius:13px;cursor:pointer;border:0;color:#3a2a0e;background:var(--gold);transition:.15s}
+  .card .acts button:hover{background:#f2c966;transform:translateY(-1px)}
+  .card .acts button.ghost{background:#ece0c4;color:#5b4a30}.card .acts button.ghost:hover{background:#e2d4b4}
+
+  /* ===== agent dock (Roll) ===== */
+  #agent{position:fixed;z-index:14;right:clamp(14px,2.5vw,26px);bottom:clamp(14px,2.5vw,26px);width:min(410px,94vw);height:min(580px,80vh);
+    background:var(--paper);border:1px solid rgba(120,90,50,.3);border-radius:22px;display:flex;flex-direction:column;overflow:hidden;
+    transform:translateY(16px) scale(.98);opacity:0;visibility:hidden;transition:.4s cubic-bezier(.3,1.4,.5,1);box-shadow:0 40px 100px rgba(0,0,0,.55)}
+  #agent.open{transform:none;opacity:1;visibility:visible}
+  #agent .head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid rgba(120,90,50,.18);background:#f6edd8}
+  #agent .av{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;
+    background:radial-gradient(circle at 35% 30%,#F4CE6B,#C2871F);box-shadow:0 4px 12px rgba(120,80,20,.3)}
+  #agent .av svg{width:22px;height:22px}
+  #agent .who b{display:block;font-family:var(--serif);font-size:16px;font-weight:700;color:#2f2416}
+  #agent .who span{font-size:11px;color:#8a7658;display:flex;align-items:center;gap:6px}
+  #agent .who .live{width:6px;height:6px;border-radius:50%;background:#5Ca05a;box-shadow:0 0 7px #5Ca05a}
+  #agent .min{margin-left:auto;background:#ece0c4;border:0;color:#8a7658;width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:15px}
+  #agent .min:hover{color:#5b4a30}
+  #log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:11px;background:#FBF3E2}
+  #log::-webkit-scrollbar{width:7px}#log::-webkit-scrollbar-thumb{background:#e2d4b4;border-radius:4px}
+  .msg{max-width:85%;font-size:13.5px;line-height:1.5;padding:11px 14px;border-radius:15px}
+  .msg.bot{align-self:flex-start;background:#f0e5cd;color:#4a3d28;border-bottom-left-radius:5px}
+  .msg.me{align-self:flex-end;background:var(--gold);color:#3a2a0e;font-weight:600;border-bottom-right-radius:5px}
+  .msg.act{align-self:flex-start;background:none;color:#a08a63;font-size:12px;font-style:italic;padding:2px 6px}
+  .msg.bot b{color:#2f2416}
+  .msg a{color:var(--goldDk);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(194,135,31,.4)}
+  .typing{align-self:flex-start;display:flex;gap:4px;padding:12px 15px}
+  .typing i{width:6px;height:6px;border-radius:50%;background:#c0ac84;animation:bl 1s infinite}
+  .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+  @keyframes bl{0%,60%,100%{opacity:.3}30%{opacity:1}}
+  #chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 18px 12px;background:#FBF3E2}
+  #chips button{background:#f0e5cd;border:1px solid rgba(194,135,31,.3);color:#5b4a30;font:inherit;font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:999px;cursor:pointer;transition:.15s}
+  #chips button:hover{background:var(--gold);color:#3a2a0e;border-color:var(--gold)}
+  #compose{display:flex;gap:8px;padding:14px 18px;border-top:1px solid rgba(120,90,50,.18);background:#f6edd8}
+  #compose input{flex:1;background:#fff;border:1px solid rgba(120,90,50,.25);border-radius:11px;color:#3a2d1a;font:inherit;font-size:13.5px;padding:11px 13px;outline:none}
+  #compose input:focus{border-color:var(--gold)}
+  #compose button{background:var(--gold);border:0;color:#3a2a0e;border-radius:11px;width:44px;cursor:pointer;font-size:16px;font-weight:800}
+  #compose button:hover{background:#f2c966}
+
+  /* arrival flash from the pipe */
+  #enter{position:fixed;inset:0;z-index:30;background:radial-gradient(circle at 50% 46%,#F0C96B,#9a6a24 52%,#2a1c0e 100%);opacity:1;transition:opacity 1s ease;pointer-events:none}
+  #enter.gone{opacity:0}
+
+  #dpad{position:fixed;z-index:7;left:18px;bottom:18px;display:none;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:6px}
+  #dpad button{background:rgba(32,24,15,.72);border:1px solid rgba(246,221,150,.25);color:var(--cream);border-radius:50%;font-size:17px;backdrop-filter:blur(6px)}
+  #dpad .u{grid-area:1/2}#dpad .l{grid-area:2/1}#dpad .r{grid-area:2/3}#dpad .d{grid-area:3/2}
+  @media (pointer:coarse){#dpad{display:grid}#hint{display:none}}
+  @media (max-width:720px){#where{display:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<header id="top" class="chrome">
+  <a class="back" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg> Back to the game</a>
+  <div style="display:flex;gap:10px;align-items:center;pointer-events:auto">
+    <div id="where"><b>One Roll Studios</b><span id="zoneName">Reception</span></div>
+    <button class="pill talk" id="talkBtn">Talk to Roll</button>
+  </div>
+</header>
+
+<div id="hint" class="chrome"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span><span class="dot"></span><span><kbd>E</kbd> interact</span><span class="dot"></span><span>walk up to <b style="color:#d9b24a">Roll</b></span></div>
+
+<div id="prompt"><div class="p"></div></div>
+
+<div id="dpad" class="chrome">
+  <button class="u" data-k="up">↑</button><button class="l" data-k="left">←</button>
+  <button class="r" data-k="right">→</button><button class="d" data-k="down">↓</button>
+</div>
+
+<div class="modal" id="zoneModal">
+  <div class="scrim" data-close></div>
+  <div class="card">
+    <button class="x" data-close>✕</button>
+    <div class="badge"><span class="d" id="zChip"></span><span id="zKind">Zone</span></div>
+    <h2 id="zTitle">—</h2><p class="tag" id="zTag">—</p><p class="desc" id="zDesc">—</p>
+    <div class="acts" id="zActs"></div>
+  </div>
+</div>
+
+<section id="agent" aria-label="ORS agent">
+  <div class="head">
+    <div class="av"><svg viewBox="0 0 736 736" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M367.956 368.044C266.416 469.536 101.826 469.521 0.30472 368L368 0.30448C469.522 101.826 469.537 266.415 368.044 367.956C469.585 266.463 634.175 266.479 735.696 368L368 735.696C266.479 634.175 266.464 469.584 367.956 368.044Z" fill="#2A2015"/></svg></div>
+    <div class="who"><b>Roll</b><span><span class="live"></span> studio agent</span></div>
+    <button class="min" id="agentMin" aria-label="Close">—</button>
+  </div>
+  <div id="log"></div>
+  <div id="chips"></div>
+  <form id="compose"><input id="inp" placeholder="Ask Roll anything about ORS…" autocomplete="off" /><button type="submit" aria-label="Send">→</button></form>
+</section>
+
+<div id="enter"></div>
+
+<script src="character.js"></script>
+<script>
+"use strict";
+/* ================================================================
+   ORS — "The studio": a gather.town-style explorable room behind the
+   pipe. Same mascot (Pip). An AGENTIC host, Roll, with a local intent
+   engine that executes in-world actions (walk you to a zone, open
+   content, run a project brief) — and a clean seam to drop in a real
+   LLM (define window.ORS_LLM; see note near the bottom).
+================================================================ */
+const cvs=document.getElementById('c'),ctx=cvs.getContext('2d');
+let W=0,H=0,DPR=Math.min(devicePixelRatio||1,2);
+function resize(){W=innerWidth;H=innerHeight;cvs.width=Math.floor(W*DPR);cvs.height=Math.floor(H*DPR);cvs.style.width=W+'px';cvs.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+resize();addEventListener('resize',resize);
+
+const K={wall:'#3F2F22',wallHi:'#4A3828',floor:'#8A6238',floorDk:'#6E4E2A',floorHi:'#A47A48',
+  gold:'#E7B23A',goldHi:'#F4CE6B',goldDk:'#C2871F',cream:'#F2E9D5',ink:'#2F2416',
+  wood:'#8A5A2E',woodDk:'#6E4522',plant:'#80A05E',plantDk:'#5C7A42',plantHi:'#A3C07D',
+  book:['#7E9A5E','#C07A4E','#B98A8A','#3A456B','#E4D7B6','#7E3E3E','#5C7A42'],rug:'#B98A52'};
+
+const WORLD={w:1540,h:1000};
+const WALL=36; // wall thickness
+
+/* ---- Zones (the 6 sections as stations) ---- */
+const ZONES=[
+ {key:'products',title:'Products',kind:'The shelf',color:'#6E9A5E',tag:'Things we built and shipped.',
+  desc:'Finished products made in-house — ideas that graduated off the studio floor into something you can use.',
+  x:300,y:300,dock:{x:300,y:380}},
+ {key:'experiments',title:'Experiments',kind:'The lab',color:'#9A7AB0',tag:'Ideas still taking shape.',
+  desc:'Prototypes and ongoing experiments. Deliberately unstable — this is where the studio thinks out loud.',
+  x:770,y:250,dock:{x:770,y:330}},
+ {key:'work',title:'Work',kind:'The gallery',color:'#C98A52',tag:'What we made for clients.',
+  desc:'Client projects and outcomes — problem, approach, result. The proof behind the capabilities.',
+  x:1240,y:300,dock:{x:1240,y:380}},
+ {key:'capabilities',title:'Capabilities',kind:'The studio floor',color:'#5A7A9A',tag:'What you can hire us to do.',
+  desc:'Product design, engineering and AI solutions — assembled around whatever you’re trying to build.',
+  x:300,y:720,dock:{x:300,y:640}},
+ {key:'about',title:'About',kind:'The lounge',color:'#B9925E',tag:'The studio, its people, its philosophy.',
+  desc:'A small, experimental studio — credible first, playful second. Led by Kali Nigam and Prerit Khanna.',
+  x:770,y:770,dock:{x:770,y:690}},
+ {key:'start',title:'Start a Project',kind:'The brief desk',color:'#C25A6E',tag:'Begin a conversation.',
+  desc:'Ready to begin? Draft a brief with Roll right here, and a human follows up.',
+  x:1240,y:720,dock:{x:1240,y:640}},
+];
+const AGENT_POS={x:770,y:540}; // Roll stands in reception (centre)
+
+/* ---- Furniture (colliders + draw type) ---- */
+const FURN=[
+ // products shelf
+ {t:'shelf',x:230,y:250,w:140,h:46,z:'products'},
+ // experiments lab bench
+ {t:'bench',x:700,y:200,w:140,h:48,z:'experiments'},
+ // work gallery (frames on top wall) — a console
+ {t:'console',x:1170,y:250,w:140,h:44,z:'work'},
+ // capabilities desks
+ {t:'desk',x:230,y:760,w:150,h:54,z:'capabilities'},
+ // about sofa
+ {t:'sofa',x:690,y:800,w:160,h:60,z:'about'},
+ // start brief desk
+ {t:'briefdesk',x:1170,y:760,w:150,h:54,z:'start'},
+ // scattered plants (pure decor colliders)
+ {t:'plant',x:540,y:470,w:40,h:40},
+ {t:'plant',x:980,y:470,w:40,h:40},
+ {t:'plant',x:540,y:630,w:40,h:40},
+ {t:'plant',x:980,y:630,w:40,h:40},
+];
+
+/* ---- Player (Pip, top-down) ---- */
+const P={x:770,y:470,w:30,h:24,vx:0,vy:0,facing:1,phase:0,moving:false};
+const SPEED=250;
+let autoWalk=null, autoCb=null;
+
+/* ---- Input ---- */
+const keys={};
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+  if(['arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+  if(['w','arrowup'].includes(k))keys.up=1;if(['s','arrowdown'].includes(k))keys.dn=1;
+  if(['a','arrowleft'].includes(k))keys.l=1;if(['d','arrowright'].includes(k))keys.r=1;
+  if(k==='e')interact();if(k==='escape'){closeZone();}
+});
+addEventListener('keyup',e=>{const k=e.key.toLowerCase();
+  if(['w','arrowup'].includes(k))keys.up=0;if(['s','arrowdown'].includes(k))keys.dn=0;
+  if(['a','arrowleft'].includes(k))keys.l=0;if(['d','arrowright'].includes(k))keys.r=0;});
+document.querySelectorAll('#dpad button').forEach(b=>{const m={up:'up',down:'dn',left:'l',right:'r'},k=m[b.dataset.k];
+  const on=e=>{e.preventDefault();keys[k]=1;autoWalk=null;};const off=()=>keys[k]=0;
+  b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointerleave',off);});
+// click-to-move
+cvs.addEventListener('pointerdown',e=>{autoWalk={x:e.clientX+cam.x-W/2,y:e.clientY+cam.y-H/2};autoCb=null;});
+
+/* ---- Camera ---- */
+const cam={x:WORLD.w/2,y:WORLD.h/2};
+function camera(dt){const tx=Math.max(W/2,Math.min(WORLD.w-W/2,P.x)),ty=Math.max(H/2,Math.min(WORLD.h-H/2,P.y));
+  cam.x+=(tx-cam.x)*Math.min(1,dt*6);cam.y+=(ty-cam.y)*Math.min(1,dt*6);}
+function w2s(x,y){return{x:x-cam.x+W/2,y:y-cam.y+H/2};}
+
+/* ---- Movement + collision ---- */
+function rectHit(px,py){const hw=P.w/2,hh=P.h/2;
+  if(px-hw<WALL||px+hw>WORLD.w-WALL||py-hh<WALL||py+hh>WORLD.h-WALL)return true;
+  for(const f of FURN){if(px+hw>f.x&&px-hw<f.x+f.w&&py+hh>f.y&&py-hh<f.y+f.h)return true;}
+  return false;}
+function step(dt){
+  let ax=0,ay=0;
+  if(autoWalk){const dx=autoWalk.x-P.x,dy=autoWalk.y-P.y,d=Math.hypot(dx,dy);
+    if(d>6){ax=dx/d;ay=dy/d;}else{autoWalk=null;if(autoCb){const cb=autoCb;autoCb=null;cb();}}}
+  else{if(keys.l)ax-=1;if(keys.r)ax+=1;if(keys.up)ay-=1;if(keys.dn)ay+=1;
+    if(ax||ay){const l=Math.hypot(ax,ay);ax/=l;ay/=l;}}
+  if(Math.abs(ax)>0.01)P.facing=ax>0?1:-1;
+  const nx=P.x+ax*SPEED*dt;if(!rectHit(nx,P.y))P.x=nx;
+  const ny=P.y+ay*SPEED*dt;if(!rectHit(P.x,ny))P.y=ny;
+  P.moving=(ax||ay)?true:false;P.vx=ax*SPEED;
+  if(P.moving)P.phase+=dt*9;
+}
+
+/* ---- Proximity / interaction ---- */
+let near=null;
+function nearest(){
+  let best=null,bd=95;
+  const da=Math.hypot(P.x-AGENT_POS.x,P.y-AGENT_POS.y);if(da<110){best={type:'agent'};bd=da;}
+  for(const z of ZONES){const d=Math.hypot(P.x-z.dock.x,P.y-z.dock.y);if(d<bd){bd=d;best={type:'zone',z};}}
+  return best;
+}
+function interact(){if(!near)near=nearest();if(!near)return;
+  if(near.type==='agent')openAgent();else openZone(near.z.key);}
+
+/* ---- Zone card ---- */
+const zoneModal=document.getElementById('zoneModal');
+function openZone(key){const z=ZONES.find(x=>x.key===key);if(!z)return;
+  document.getElementById('zKind').textContent=z.kind;document.getElementById('zTitle').textContent=z.title;
+  const tag=document.getElementById('zTag');tag.textContent=z.tag;tag.style.color=z.color;
+  document.getElementById('zDesc').textContent=z.desc;
+  const chip=document.getElementById('zChip');chip.style.background=z.color;
+  const acts=document.getElementById('zActs');acts.innerHTML='';
+  const b1=document.createElement('button');b1.textContent='Ask Roll about this';b1.onclick=()=>{closeZone();openAgent();handle('Tell me about '+z.title);};
+  const b2=document.createElement('button');b2.className='ghost';b2.textContent=z.key==='start'?'Draft a brief':'Show me around';
+  b2.onclick=()=>{closeZone();openAgent();handle(z.key==='start'?'Help me draft a brief':'Show me around the studio');};
+  acts.appendChild(b1);acts.appendChild(b2);
+  zoneModal.classList.add('open');}
+function closeZone(){zoneModal.classList.remove('open');}
+zoneModal.querySelectorAll('[data-close]').forEach(el=>el.onclick=closeZone);
+
+/* ================= AGENT "Roll" (local engine + LLM seam) ================= */
+const agentEl=document.getElementById('agent'),logEl=document.getElementById('log'),chipsEl=document.getElementById('chips'),inp=document.getElementById('inp');
+let agentOpened=false;
+const MEM={brief:{active:false,step:0,data:{}}};
+
+/* --- in-world ACTIONS the agent can take (its "tools") --- */
+const TOOLS={
+  goTo(zoneKey){const z=ZONES.find(x=>x.key===zoneKey);if(!z)return;
+    actLine('walking you to '+z.title+'…');highlight=z.key;highlightT=3;
+    autoWalk={x:z.dock.x,y:z.dock.y};autoCb=()=>{openZone(z.key);};},
+  show(zoneKey){openZone(zoneKey);},
+  startBrief(){startBrief();},
+};
+
+function el(c,h){const d=document.createElement('div');d.className=c;d.innerHTML=h;return d;}
+function scroll(){logEl.scrollTop=logEl.scrollHeight;}
+function meSay(t){logEl.appendChild(el('msg me',esc(t)));scroll();}
+function botSay(h){logEl.appendChild(el('msg bot',h));scroll();}
+function actLine(t){logEl.appendChild(el('msg act','↳ '+esc(t)));scroll();}
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function setChips(a){chipsEl.innerHTML='';a.forEach(t=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>handle(t);chipsEl.appendChild(b);});}
+function typing(){const t=el('typing','<i></i><i></i><i></i>');logEl.appendChild(t);scroll();return t;}
+
+function openAgent(){agentEl.classList.add('open');
+  if(!agentOpened){agentOpened=true;
+    botSay(`Hey — I’m <b>Roll</b>, the studio agent. I can show you around, explain what we do, point you to the right thing, or help you shape a project brief. I can also just <b>walk you over</b> to any part of the studio. What are you after?`);
+    setChips(['What does ORS do?','Show me your work','I want to hire you','Help me draft a brief']);}
+  setTimeout(()=>inp.focus(),300);}
+document.getElementById('agentMin').onclick=()=>agentEl.classList.remove('open');
+document.getElementById('talkBtn').onclick=openAgent;
+
+/* --- the brain: local intent engine (returns {text, tool, arg, chips}) --- */
+function localBrain(text){
+  const q=text.toLowerCase();
+  const z=k=>ZONES.find(x=>x.key===k);
+  if(/brief|scope|start a project|start project|draft/.test(q))return{startBrief:true};
+  if(/hire|work with|engage|can you build|help me build|agency/.test(q))
+    return{text:`We’d love to. ORS takes on <b>product design</b>, <b>engineering</b>, and <b>AI solutions</b> — usually end to end. Our sharpest work is with insurtech and serious product companies. Want me to walk you to the <b>Work</b> gallery, or help you draft a brief?`,chips:['Walk me to the work','Help me draft a brief','What does it cost?']};
+  if(/product|shelf|app|tool|waitlist/.test(q))
+    return{text:`Our products live on the shelf — I’ll take you over. Tell me what you’re trying to do and I’ll point you at the closest fit.`,tool:'goTo',arg:'products',chips:['What are you building with AI?','Show me the work','Help me draft a brief']};
+  if(/experiment|prototype|lab|research|r&d/.test(q))
+    return{text:`The lab is where prototypes live — deliberately unstable. Coming right up.`,tool:'goTo',arg:'experiments',chips:['Show me products','I want to hire you']};
+  if(/work|case study|portfolio|client|gallery|result/.test(q))
+    return{text:`The gallery has client projects — problem, approach, outcome. Follow me.`,tool:'goTo',arg:'work',chips:['I want to hire you','Help me draft a brief']};
+  if(/capab|service|what can you|offer|do you do|design|engineer/.test(q))
+    return{text:`Three things, assembled around your problem: <b>product & design</b>, <b>engineering</b>, and <b>AI solutions</b>. Let me show you the studio floor.`,tool:'goTo',arg:'capabilities',chips:['I want to hire you','What are you building with AI?','Help me draft a brief']};
+  if(/\bai\b|agent|llm|automation|model/.test(q))
+    return{text:`AI is core to how we build — practical agents and systems wired into real workflows, not demos. I’m a small example of it myself. Want to scope an AI project, or see what we’ve shipped?`,chips:['Help me draft a brief','Show me products']};
+  if(/who|about|studio|people|founder|kali|prerit|philosophy/.test(q))
+    return{text:`One Roll Studios is a small, experimental studio — credible first, playful second. Led by <b>Kali Nigam</b> (design & creative) and <b>Prerit Khanna</b> (product & systems; ex-Amazon, Zomato, Junglee Games). Let me walk you to the lounge.`,tool:'goTo',arg:'about',chips:['I want to hire you','What does ORS do?']};
+  if(/cost|price|pricing|budget|how much/.test(q))
+    return{text:`It depends on scope — we don’t do fixed menus. Fastest way to a real number is a short brief; I can take the first pass now and a human follows up. Shall we?`,chips:['Help me draft a brief','Just exploring']};
+  if(/tell me about (.+)/.test(q)){const m=q.match(/tell me about (.+)/)[1];const hit=ZONES.find(x=>m.includes(x.key)||m.includes(x.title.toLowerCase()));
+    if(hit)return{text:`<b>${hit.title}</b> — ${hit.tag} ${hit.desc} Want me to take you there?`,chips:['Take me there','Help me draft a brief']};}
+  if(/take me there|walk me|show me around|tour|around the studio/.test(q))
+    return{text:`Sure — let’s start with the work.`,tool:'goTo',arg:'work',chips:['Show me products','Help me draft a brief']};
+  if(/what does ors|what do you do|what is ors|^hi|^hey|^hello/.test(q))
+    return{text:`One studio, a whole universe of possibilities 🙂 — ORS builds <b>products, experiences and AI</b>. You can hire us to build something, or use something we’ve built. Which sounds like you?`,chips:['I want to hire you','Show me products','Help me draft a brief']};
+  if(/thank|thanks|cool|nice|great/.test(q))return{text:`Anytime. Wander around, or ping me whenever. Want to leave a brief so a human can follow up?`,chips:['Help me draft a brief','Just exploring']};
+  if(/no|just explor|nothing/.test(q))return{text:`All good — explore away. Walk up to any station and press <b>E</b>, or ask me to take you somewhere.`,chips:['What does ORS do?','Show me the work']};
+  return{text:`Here’s the short version: ORS designs and builds products and AI. I can walk you to <b>products</b>, the <b>work</b>, or help you <b>draft a brief</b> — your pick.`,chips:['Show me products','Walk me to the work','Help me draft a brief']};
+}
+
+/* --- LLM seam: define window.ORS_LLM to go fully agentic (see note) --- */
+async function brain(text){
+  if(typeof window.ORS_LLM==='function'){
+    try{const r=await window.ORS_LLM({text,history:[...logEl.querySelectorAll('.msg')].map(m=>m.textContent),tools:Object.keys(TOOLS),zones:ZONES.map(z=>z.key)});
+      if(r&&typeof r==='object')return r;}catch(e){/* fall through to local */}
+  }
+  return localBrain(text);
+}
+
+async function handle(text){
+  meSay(text);chipsEl.innerHTML='';
+  if(MEM.brief.active)return briefStep(text);
+  const t=typing();
+  const r=await brain(text);
+  await new Promise(res=>setTimeout(res,520+Math.random()*360));
+  t.remove();
+  if(r.startBrief){return startBrief();}
+  if(r.text)botSay(r.text);
+  if(r.tool&&TOOLS[r.tool])TOOLS[r.tool](r.arg);
+  if(r.chips)setChips(r.chips);
+}
+document.getElementById('compose').addEventListener('submit',e=>{e.preventDefault();const v=inp.value.trim();if(!v)return;inp.value='';handle(v);});
+
+/* --- brief builder flow --- */
+const BRIEF_Q=[['goal','In one line — what are you trying to build or fix?'],['who','Who is it for? (your users / customers)'],
+ ['stage','Where are you now — idea, prototype, or live product?'],['timing','Any timeline or deadline?'],['contact','Last thing — an email so a human can follow up.']];
+function startBrief(){openAgent();MEM.brief.active=true;MEM.brief.step=0;MEM.brief.data={};
+  const t=typing();setTimeout(()=>{t.remove();botSay(`Let’s shape a brief — five quick questions, ~60 seconds.<br><br><b>${BRIEF_Q[0][1]}</b>`);},500);}
+function briefStep(text){const [k]=BRIEF_Q[MEM.brief.step];MEM.brief.data[k]=text;MEM.brief.step++;
+  if(MEM.brief.step<BRIEF_Q.length){const t=typing();setTimeout(()=>{t.remove();botSay(`<b>${BRIEF_Q[MEM.brief.step][1]}</b>`);},420);return;}
+  MEM.brief.active=false;const d=MEM.brief.data;
+  const t=typing();setTimeout(()=>{t.remove();
+    botSay(`Here’s your brief — looks solid:<br><br><b>Goal</b> — ${esc(d.goal||'')}<br><b>For</b> — ${esc(d.who||'')}<br><b>Stage</b> — ${esc(d.stage||'')}<br><b>Timeline</b> — ${esc(d.timing||'')}<br><b>Contact</b> — ${esc(d.contact||'')}<br><br>I’ve prepped this for the team — a human follows up, usually within a day. 🙌`);
+    setChips(['Start over','Show me the work']);},900);}
+
+/* deep links from the game: ?agent=brief / ?agent */
+const params=new URLSearchParams(location.search);
+if(params.get('agent')==='brief')setTimeout(startBrief,1200);
+else if(params.get('agent'))setTimeout(openAgent,1200);
+
+/* ===================== RENDER ===================== */
+let highlight=null,highlightT=0;
+const PROMPT=document.getElementById('prompt'),PROMPTP=PROMPT.querySelector('.p'),zoneName=document.getElementById('zoneName');
+function rr(x,y,w,h,r){if(typeof r!=='number')r=5;ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function drawFloor(){
+  const o={x:-cam.x+W/2,y:-cam.y+H/2};
+  // wood floor
+  const g=ctx.createLinearGradient(0,o.y,0,o.y+WORLD.h);g.addColorStop(0,K.floorHi);g.addColorStop(1,K.floorDk);
+  ctx.fillStyle=g;ctx.fillRect(o.x,o.y,WORLD.w,WORLD.h);
+  // planks
+  ctx.strokeStyle='rgba(40,26,14,.22)';ctx.lineWidth=1.5;
+  for(let y=0;y<=WORLD.h;y+=46){const sy=o.y+y;if(sy>-5&&sy<H+5){ctx.beginPath();ctx.moveTo(o.x,sy);ctx.lineTo(o.x+WORLD.w,sy);ctx.stroke();}}
+  for(let x=0;x<=WORLD.w;x+=150){for(let y=0;y<WORLD.h;y+=46){const off=((y/46|0)%2)?75:0;const sx=o.x+x+off,sy=o.y+y;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx,sy+46);ctx.stroke();}}
+  // reception rug (centre)
+  ctx.save();ctx.translate(o.x+770,o.y+540);ctx.fillStyle=K.rug;ctx.globalAlpha=.9;
+  ctx.beginPath();ctx.ellipse(0,0,230,150,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;ctx.strokeStyle='rgba(255,245,210,.25)';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,0,206,132,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+  // walls (top band + border)
+  ctx.fillStyle=K.wall;
+  ctx.fillRect(o.x,o.y,WORLD.w,WALL);ctx.fillRect(o.x,o.y+WORLD.h-WALL,WORLD.w,WALL);
+  ctx.fillRect(o.x,o.y,WALL,WORLD.h);ctx.fillRect(o.x+WORLD.w-WALL,o.y,WALL,WORLD.h);
+  ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(o.x,o.y+WALL,WORLD.w,5);
+  // framed art on the top wall
+  for(let i=0;i<7;i++){const fx=o.x+180+i*180,fy=o.y+6;if(fx>-60&&fx<W+60)frame(fx,fy,i);}
+}
+function frame(x,y,i){const w=46,h=26;ctx.fillStyle=i%2?'#C2871F':'#241706';rr(x,y,w,h,3);ctx.fill();
+  const mat=['#9FA98A','#C2A08A','#A8B0C0','#B9A86A'][i%4];ctx.fillStyle=mat;rr(x+4,y+4,w-8,h-8,2);ctx.fill();}
+
+function drawFurn(f,time){const s=w2s(f.x,f.y);const x=s.x,y=s.y;if(x>W+80||x+f.w<-80||y>H+80||y+f.h<-80)return;
+  // shadow
+  ctx.fillStyle='rgba(18,11,4,.22)';rr(x+5,y+f.h-3,f.w,10,5);ctx.fill();
+  if(f.t==='plant'){ctx.save();ctx.translate(x+f.w/2,y+f.h);
+    for(let i=-2;i<=2;i++){ctx.save();ctx.rotate(i*0.26+Math.sin(time*0.8+i)*0.03);const g=ctx.createLinearGradient(0,-6,0,-50);g.addColorStop(0,K.plantDk);g.addColorStop(1,K.plantHi);ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,-30,7,24,0,0,Math.PI*2);ctx.fill();ctx.restore();}
+    ctx.fillStyle=K.woodDk;ctx.beginPath();ctx.moveTo(-14,0);ctx.lineTo(14,0);ctx.lineTo(10,16);ctx.lineTo(-10,16);ctx.closePath();ctx.fill();ctx.restore();return;}
+  // mustard furniture body
+  const g=ctx.createLinearGradient(0,y,0,y+f.h);g.addColorStop(0,K.goldHi);g.addColorStop(1,K.goldDk);
+  if(f.t==='sofa')ctx.fillStyle='#8a6a46';else ctx.fillStyle=g;
+  rr(x,y,f.w,f.h,8);ctx.fill();
+  ctx.fillStyle='rgba(255,245,210,.28)';ctx.fillRect(x+5,y+3,f.w-10,2);
+  if(f.t==='shelf'||f.t==='console'){ // books on top
+    let bx=x+8;while(bx<x+f.w-8){const bw=6+((bx|0)%6),bh=16+((bx|0)%10);ctx.fillStyle=K.book[(bx|0)%K.book.length];rr(bx,y-bh,bw,bh,2);ctx.fill();bx+=bw+3;}}
+  if(f.t==='desk'||f.t==='briefdesk'){ // a monitor
+    ctx.fillStyle='#241706';rr(x+f.w/2-20,y-30,40,26,3);ctx.fill();ctx.fillStyle=f.t==='briefdesk'?'#C25A6E':'#5A7A9A';rr(x+f.w/2-16,y-26,32,18,2);ctx.fill();
+    ctx.fillStyle='#241706';ctx.fillRect(x+f.w/2-4,y-6,8,6);}
+  if(f.t==='bench'){ctx.fillStyle='#9A7AB0';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x+22+i*46,y-10,9,0,Math.PI*2);ctx.fill();}}
+  if(f.t==='sofa'){ctx.fillStyle='#7a5c3e';rr(x,y-18,f.w,22,8);ctx.fill();ctx.fillStyle='#9a7a56';rr(x+8,y-14,f.w-16,14,6);ctx.fill();}
+}
+
+function drawZoneTag(z){const s=w2s(z.x,z.y);const near2=near&&near.type==='zone'&&near.z.key===z.key;const hl=highlight===z.key;
+  ctx.textAlign='center';
+  // marker dot
+  ctx.fillStyle=z.color;ctx.globalAlpha=hl?1:.9;ctx.shadowColor=z.color;ctx.shadowBlur=hl?18:8;
+  ctx.beginPath();ctx.arc(s.x,s.y,7,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;
+  // label
+  ctx.font='800 13px "Inter Display",sans-serif';ctx.lineWidth=3.5;ctx.strokeStyle='rgba(20,13,5,.55)';
+  ctx.fillStyle=near2||hl?'#fff7e6':'#F2E9D5';
+  ctx.strokeText(z.title.toUpperCase(),s.x,s.y-16);ctx.fillText(z.title.toUpperCase(),s.x,s.y-16);
+  ctx.font='600 9.5px "Inter Display",sans-serif';ctx.fillStyle='rgba(242,233,213,.6)';ctx.lineWidth=3;ctx.strokeStyle='rgba(20,13,5,.5)';
+  ctx.strokeText(z.kind.toUpperCase(),s.x,s.y+2);ctx.fillText(z.kind.toUpperCase(),s.x,s.y+2);}
+
+function drawAgent(time){const s=w2s(AGENT_POS.x,AGENT_POS.y);const x=s.x,y=s.y;
+  // pulse ring
+  const pr=26+Math.sin(time*2)*4;ctx.strokeStyle='rgba(231,178,58,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,pr,0,Math.PI*2);ctx.stroke();
+  // shadow
+  ctx.fillStyle='rgba(18,11,4,.3)';ctx.beginPath();ctx.ellipse(x,y+20,18,6,0,0,Math.PI*2);ctx.fill();
+  // body — warm mustard orb
+  const bob=Math.sin(time*1.6)*3;ctx.save();ctx.translate(x,y+bob);
+  const g=ctx.createRadialGradient(-6,-8,3,0,0,22);g.addColorStop(0,K.goldHi);g.addColorStop(1,K.goldDk);
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,21,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,245,210,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,21,Math.PI*1.05,Math.PI*1.8);ctx.stroke();
+  // face: ORS spark + two eyes
+  ctx.save();ctx.rotate(time*0.5);ctx.fillStyle='#2A2015';ORSChar.star4(ctx,6);ctx.fill();ctx.restore();
+  ctx.fillStyle='#2A2015';ctx.beginPath();ctx.arc(-6,-2,2.4,0,Math.PI*2);ctx.arc(6,-2,2.4,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  // name
+  ctx.textAlign='center';ctx.font='800 12px "Inter Display",sans-serif';ctx.lineWidth=3.5;ctx.strokeStyle='rgba(20,13,5,.55)';ctx.fillStyle=K.goldHi;
+  ctx.strokeText('ROLL · AGENT',x,y+38);ctx.fillText('ROLL · AGENT',x,y+38);}
+
+/* ---- loop ---- */
+let last=performance.now();
+function loop(now){const dt=Math.min((now-last)/1000,0.05);last=now;const time=now/1000;
+  step(dt);camera(dt);if(highlightT>0){highlightT-=dt;if(highlightT<=0)highlight=null;}
+  near=nearest();
+  // render
+  drawFloor();
+  ZONES.forEach(drawZoneTag);
+  FURN.forEach(f=>drawFurn(f,time));
+  drawAgent(time);
+  // player (Pip, top-down)
+  const sp=Math.hypot(P.vx,0)+(P.moving?120:0);
+  ORSChar.draw(ctx,{x:w2s(P.x,P.y).x,y:w2s(P.x,P.y).y+18,facing:P.facing,vx:(P.facing)*(P.moving?180:0),vy:0,grounded:true,phase:P.phase,t:time,scale:0.66});
+  ctx.fillStyle='rgba(242,233,213,.5)';ctx.font='600 11px "Inter Display",sans-serif';ctx.textAlign='center';ctx.fillText('YOU',w2s(P.x,P.y).x,w2s(P.x,P.y).y+34);
+  // prompt
+  if(near){const label=near.type==='agent'?`Talk to <b>Roll</b>`:`Enter <b>${near.z.title}</b>`;PROMPTP.innerHTML=`${label} · press <b>E</b>`;
+    const a=near.type==='agent'?{x:AGENT_POS.x,y:AGENT_POS.y-44}:{x:near.z.x,y:near.z.y-32};const s=w2s(a.x,a.y);
+    PROMPT.style.left=s.x+'px';PROMPT.style.top=s.y+'px';PROMPT.classList.add('on');
+    zoneName.textContent=near.type==='agent'?'Reception':near.z.kind;}
+  else PROMPT.classList.remove('on');
+  document.getElementById('hint').classList.toggle('dim',agentEl.classList.contains('open'));
+  requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+
+/* arrival flash */
+addEventListener('load',()=>setTimeout(()=>document.getElementById('enter').classList.add('gone'),250));
+setTimeout(()=>document.getElementById('enter').classList.add('gone'),1400);
+
+/* ================================================================
+   LLM SEAM — make Roll fully agentic with a real model:
+     window.ORS_LLM = async ({text, history, tools, zones}) => {
+        // Call your Claude API via a BACKEND PROXY (never expose a key here).
+        // Return { text:"...", tool:"goTo"|"show"|"startBrief", arg:"work" }
+        // Any returned tool runs as a real in-world action.
+     };
+   With it undefined, Roll uses the built-in local intent engine above.
+================================================================ */
+</script>
+</body>
+</html>
